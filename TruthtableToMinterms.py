@@ -8,34 +8,31 @@ input_file = "table.xlsx"
 #    "Geben Sie den Dateinamen der Excel-Datei mit der Turthtable ein (z.B table.xlsx): ")
 
 # Lese die Excel-Datei ein
-df = pd.read_excel(input_file)
-anz_rows = len(df)
+dataframe = pd.read_excel(input_file)
+anz_rows = len(dataframe)
 anz_inputs = int(math.log2(anz_rows))
 
 
 # function to convert a Pandas DataFrame into a list of minterms
 def truth_table_to_minterms(df):
-    minterms = []
-    for index, row in df.iterrows():
-        if row[anz_inputs] == 1:  # works at the moment only for one output
-            minterms.append(index)
-    return minterms
-
-
-# Group minterms by the number of '1's in their binary representation
-def group_minterms(minterms):
-    groups = {}
-    for minterm in minterms:
-        num_ones = bin(minterm).count('1')
-        if num_ones not in groups:
-            groups[num_ones] = []
-        groups[num_ones].append(minterm)
-    return groups
-
+    # Remove rows with 0 in the specified column
+    df = df[df[df.columns[anz_inputs]] == 1].copy()
+    
+    # Count the number of 1s in each row in the anz_inputs columns
+    row_sums = df.iloc[:, :anz_inputs].sum(axis=1)
+    df['number_of_ones'] = row_sums
+    
+    df = df.sort_values(by='number_of_ones')
+    
+    # Drop the original Output column using .loc
+    df = df.drop(columns=df.columns[anz_inputs])
+    
+    return df
 
 # Compares twp terms and if there is only one diffrence it returns true
-def compare_two_terms(row1, row2):
+def compare_two_terms(df, row1, row2):
     number_of_diffrences = 0
+    # saves the pos bzw row of the diffrence
     pos_of_diffrence = -1
     for i in range(anz_inputs):
         if df.iloc[row1, i] != df.iloc[row2, i]:
@@ -47,20 +44,32 @@ def compare_two_terms(row1, row2):
         return False
 
 
-def compare_terms_in_adjacent_groups(groups):
-    result = {}
-    keys = list(groups.keys())
-    keys.sort()
+def compare_terms_in_adjacent_groups(df):
+   
+   return 
+   
 
-    for i in range(len(keys) - 1):
-        key1, key2 = keys[i], keys[i + 1]
-        values1 = groups[key1]
-        values2 = groups[key2]
-        for value1 in values1:
-            for value2 in values2:
-                compare_two_terms(value1, value2)
+minterms = truth_table_to_minterms(dataframe)
+#groups = group_minterms(minterms)
+#rime_implicants = quine_mccluskey(groups)
+#minimal_terms = get_minimal_terms(prime_implicants)
 
-    return result
+print(dataframe)
+print(minterms)
+#print(groups)
+#print(prime_implicants)
+#print(minimal_terms)
+
+
+# Group minterms by the number of '1's in their binary representation
+def group_minterms(minterms):
+    groups = {}
+    for minterm in minterms:
+        num_ones = bin(minterm).count('1')
+        if num_ones not in groups:
+            groups[num_ones] = []
+        groups[num_ones].append(minterm)
+    return groups
 
 
 def quine_mccluskey(groups):
@@ -95,7 +104,7 @@ def quine_mccluskey(groups):
 
     return prime_implicants
 
-# Step 4: Convert the minimized terms back to the original variable representation
+# Convert the minimized terms back to the original variable representation
 
 
 def get_minimal_terms(prime_implicants):
@@ -110,15 +119,3 @@ def get_minimal_terms(prime_implicants):
                 minimal_term.append(f"A{i}'")
         minimal_terms.append(''.join(minimal_term))
     return minimal_terms
-
-
-minterms = truth_table_to_minterms(df)
-groups = group_minterms(minterms)
-prime_implicants = quine_mccluskey(groups)
-minimal_terms = get_minimal_terms(prime_implicants)
-
-print(df)
-print(minterms)
-print(groups)
-print(prime_implicants)
-print(minimal_terms)
