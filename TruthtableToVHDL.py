@@ -1,7 +1,7 @@
 import pandas as pd
 import math  # für log
 import sys  # für exit
-
+# I have a truth table as a pandas dataframe in python. Can you implement the Quine McCluskey Algorithm to get the min terms?
 input_file = input(
     "Geben Sie den Dateinamen der Excel-Datei mit der Turthtable ein (z.B table.xlsx): ")
 vhdl_filename = input(
