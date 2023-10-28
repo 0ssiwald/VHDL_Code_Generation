@@ -27,13 +27,12 @@ def truth_table_to_minterms(df):
 
 def check_for_doubled_terms(result, merged_term):
     for j in range(len(result)):
-        if abs(merged_term.at['number_of_ones'] - result.at[j, 'number_of_ones']) == 0:
-            diff_count = 0
-            for col in range(number_of_inputs):
-                if merged_term.iloc[col] != result.iloc[j, col]:
-                    diff_count += 1
-            if diff_count == 0:
-                return True
+        diff_count = 0
+        for col in range(number_of_inputs):
+            if merged_term.iloc[col] != result.iloc[j, col]:
+                diff_count += 1
+        if diff_count == 0:
+            return True
     return False
 
 
@@ -61,14 +60,16 @@ def compare_terms_in_adjacent_groups(df):
         else:
             for j in range(i + 1, len(df)):
                 diff_count = 0
+                block_flag = False
                 # Compare adjesent rows if there is only 1 diffrence in the number of ones
                 if abs(df.at[i, 'number_of_ones'] - df.at[j, 'number_of_ones']) == 1:
                     # Look if there is only one diffrence between rows
                     for col in range(number_of_inputs):
                         if df.iloc[i, col] != df.iloc[j, col]:
                             diff_count += 1
-                    if diff_count == 1:
-                        terms_got_minimized = True
+                            if df.iloc[i, col] == '-' or df.iloc[j, col] == '-':
+                                block_flag = True
+                    if diff_count == 1 and block_flag == False:
                         term_can_be_minimized = True
                         # Add row to new result dataframe
                         merged_term = df.loc[i].copy()
@@ -80,7 +81,8 @@ def compare_terms_in_adjacent_groups(df):
                         for col in range(number_of_inputs):
                             if df.iloc[i, col] != df.iloc[j, col]:
                                 merged_term[df.columns[col]] = '-'
-                        if check_for_doubled_terms(result, merged_term) == False:
+                        if not check_for_doubled_terms(result, merged_term):
+                            terms_got_minimized = True
                             result = result.append(
                                 merged_term, ignore_index=True)
         # If the term is completly minimized it gets still copied to the new dataframe
@@ -126,7 +128,7 @@ def visulize_selected_terms(df, selected_row):
 def reduce_eliminating_table(df):
     # List of the still required columns
     required_columns = list(df.columns)
-    #result_df = pd.DataFrame(columns=df.columns)
+    # result_df = pd.DataFrame(columns=df.columns)
     selected_rows = list()
     while required_columns:
         max_x_count = 0
@@ -138,7 +140,7 @@ def reduce_eliminating_table(df):
                 best_row = row
                 best_row_index = index
         if best_row is not None:
-            #result_df = result_df.append(best_row, ignore_index=True)
+            # result_df = result_df.append(best_row, ignore_index=True)
             selected_rows.append(best_row_index)
             # copy because iterating through a list were items are getting removed leads to errors
             columns_copy = required_columns.copy()
