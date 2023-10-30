@@ -1,31 +1,29 @@
 import pandas as pd
-import math  # für log
-import sys  # für exit
-# I have a truth table as a pandas dataframe in python. Can you implement the Quine McCluskey Algorithm to get the min terms?
+import math  # for log
+import sys  # for exit
 input_file = input(
-    "Geben Sie den Dateinamen der Excel-Datei mit der Turthtable ein (z.B table.xlsx): ")
+    "Enter the filename of the Excel file with the truth table. (e.g. table.xlsx): ")
 vhdl_filename = input(
-    "Geben Sie den Dateinamen der zu erstellenden VHDL Datei ein (z.B bool.vhd): ")
-name_entity = input("Geben Sie den Namen der Entity ein: ")
-name_architecture = input("Geben Sie den Namen der Architecture ein: ")
-# Lese die Excel-Datei ein
+    "Enter the filename of the VHDL file (e.g. bool.vhd): ")
+name_entity = input("Enter the entity name: ")
+name_architecture = input("Enter the architecture name: ")
 df = pd.read_excel(input_file)
 
-anz_rows = len(df)
-anz_inputs = int(math.log2(anz_rows))
-anz_outputs = len(df.columns) - anz_inputs
+number_of_rows = len(df)
+number_of_inputs = int(math.log2(number_of_rows))
+number_of_outputs = len(df.columns) - number_of_inputs
 
 input_names = ""
-for i in range(anz_inputs):
+for i in range(number_of_inputs):
     # df.columns acesses the names of the columns in the dataframe
     input_names += df.columns[i]
-    if i < anz_inputs - 1:
+    if i < number_of_inputs - 1:
         input_names += ", "
 
 output_names = ""
-for i in range(anz_outputs):
-    output_names += df.columns[i + anz_inputs]
-    if i < anz_outputs - 1:
+for i in range(number_of_outputs):
+    output_names += df.columns[i + number_of_inputs]
+    if i < number_of_outputs - 1:
         output_names += ", "
 
 vhdl_code = f"""library ieee;
@@ -39,30 +37,30 @@ END {name_entity};
 ARCHITECTURE {name_architecture} OF {name_entity} IS
     BEGIN
         PROCESS ({input_names})
-            VARIABLE var_input_vec : std_logic_vector({anz_inputs - 1} DOWNTO 0);
+            VARIABLE var_input_vec : std_logic_vector({number_of_inputs - 1} DOWNTO 0);
             BEGIN
             var_input_vec := """
-for i in range(anz_inputs):
+for i in range(number_of_inputs):
     vhdl_code += f"{df.columns[i]}"
-    if i < anz_inputs - 1:
+    if i < number_of_inputs - 1:
         vhdl_code += " & "
     else:
         vhdl_code += ";\n"
 vhdl_code += f"\t\t\tCASE var_input_vec IS\n"
 for i in range(len(df)):
     vhdl_code += f'\t\t\t\tWHEN "'
-    for j in range(anz_inputs):
+    for j in range(number_of_inputs):
         vhdl_code += str(df.iloc[i, j])
 
     vhdl_code += '" => '
-    # alles in einer Zeile bei nur einem output
-    if anz_outputs > 1:
+    # all in one row if only one output
+    if number_of_outputs > 1:
         vhdl_code += f'\n'
-    for k in range(anz_outputs):
-        if anz_outputs > 1:
+    for k in range(number_of_outputs):
+        if number_of_outputs > 1:
             vhdl_code += f"\t\t\t\t\t"
-        vhdl_code += f"{df.columns[anz_inputs + k]} <= '{df.iloc[i, anz_inputs + k]}';\n"
-vhdl_code += f"""\t\t\t\tWHEN OTHERS => {df.columns[anz_inputs]} <= 'U';
+        vhdl_code += f"{df.columns[number_of_inputs + k]} <= '{df.iloc[i, number_of_inputs + k]}';\n"
+vhdl_code += f"""\t\t\t\tWHEN OTHERS => {df.columns[number_of_inputs]} <= 'U';
             END CASE;
         END PROCESS;
 END {name_architecture};"""
@@ -71,18 +69,31 @@ with open(vhdl_filename, "w") as vhdl_file:
     vhdl_file.write(vhdl_code)
 
 while True:
-    create_testbench = input(
-        f"Soll für {vhdl_filename} eine testbench erstellt werden? (y/n): ")
-    if create_testbench == 'y':
+    y_n = input(
+        f"Create a testbench for {vhdl_filename}? (y/n): ")
+    if y_n == 'y':
         break
-    if create_testbench == 'n':
+    if y_n == 'n':
         sys.exit()
 
-# Ab hier Testbench
+# This part is for the testbench
+while True:
+    y_n = input(
+        f"Should other std_logic states like 'X' and 'U' be included in the testbench besides '1' and '0'? (y/n): ")
+    if y_n == 'n':
+        other_states = False
+        break
+    if y_n == 'y':
+        other_states = input(
+            f"Enter the additional states from this list of states (U, X, Z, W, L, H) seperated by ', ' (e.g. X, Z): ")
+        other_states_list = other_states.split(', ')
+        break
+
+
 output_signal_names = ""
-for i in range(anz_outputs):
-    output_signal_names += f"s_{df.columns[i + anz_inputs]}"
-    if i < anz_outputs - 1:
+for i in range(number_of_outputs):
+    output_signal_names += f"s_{df.columns[i + number_of_inputs]}"
+    if i < number_of_outputs - 1:
         output_signal_names += ", "
 
 vhdl_bench = f"""library ieee;
@@ -97,18 +108,32 @@ ARCHITECTURE tb_{name_architecture} OF tb_{name_entity} IS
                 {output_names}: OUT std_logic);
     END COMPONENT;
 
-    SIGNAL s_input: STD_LOGIC_VECTOR({anz_inputs - 1} DOWNTO 0);
+    SIGNAL s_input: STD_LOGIC_VECTOR({number_of_inputs - 1} DOWNTO 0);
     SIGNAL {output_signal_names}: STD_LOGIC;
     BEGIN
         dut: {name_entity} PORT MAP("""
-for i in range(anz_inputs):
-    vhdl_bench += f"s_input({anz_inputs - i - 1}), "
+for i in range(number_of_inputs):
+    vhdl_bench += f"s_input({number_of_inputs - i - 1}), "
 vhdl_bench += f"""{output_signal_names});
         PROCESS
         BEGIN\n"""
+
+# This part to test the other states
+if other_states != False:
+    for state in range(len(other_states_list)):
+        for other_state_pos in range(number_of_inputs):
+            for row in range(len(df)):
+                vhdl_bench += f'\t\t\t\ts_input <= "'
+                for input in range(number_of_inputs):
+                    if other_state_pos == input:
+                        vhdl_bench += other_states_list[state]
+                    else:
+                        vhdl_bench += str(df.iloc[row, input])
+                vhdl_bench += '"; WAIT FOR 1 NS;\n'
+
 for i in range(len(df)):
     vhdl_bench += f'\t\t\t\ts_input <= "'
-    for j in range(anz_inputs):
+    for j in range(number_of_inputs):
         vhdl_bench += str(df.iloc[i, j])
     if i < len(df) - 1:
         vhdl_bench += '"; WAIT FOR 1 NS;\n'
