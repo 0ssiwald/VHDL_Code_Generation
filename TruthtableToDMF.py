@@ -12,14 +12,19 @@ number_of_inputs = int(math.log2(number_of_rows))
 
 
 def truth_table_to_minterms(df):
-    # Remove rows with 0 in the specified column
-    df = df[df[df.columns[number_of_inputs]] == 1].copy()
+    # Add an empty column 'is_a_dont_care'
+    df['is_a_dont_care'] = False
+    # Remove rows with 0 in the specified column (take 0 and dont cares)
+    df = df[df[df.columns[number_of_inputs]] != 0].copy()
+    for row in range(len(df)):
+        if df.iloc[row, number_of_inputs] != 1:
+            df.iloc[row, number_of_inputs + 1] = True
     # Count the number of 1s in each row in the anz_inputs columns
-    row_sums = df.iloc[:, :number_of_inputs].sum(axis=1)
+    row_sums = df.iloc[:, : number_of_inputs].sum(axis=1)
     df['number_of_ones'] = row_sums
     # sort dataframe by the number of ones
     df = df.sort_values(by='number_of_ones')
-    # Drop the original Output column using .loc
+    # Drop the original Output column using
     df = df.drop(columns=df.columns[number_of_inputs])
     df = df.reset_index(drop=True)
     return df
@@ -38,6 +43,9 @@ def check_for_doubled_terms(result, merged_term):
 
 def compare_terms_in_adjacent_groups(df):
     terms_got_minimized = False
+    # Remove the is_a_dont care column
+    if 'is_a_dont_care' in df.columns:
+        df = df.drop(columns='is_a_dont_care')
     # Reset the indexes of the dataframe
     df = df.reset_index(drop=True)
     # New dataframe for results
@@ -93,8 +101,10 @@ def compare_terms_in_adjacent_groups(df):
 
 
 def eliminating_table(minterms, reduced_df):
-    # Create an empty DataFrame with sequential column names
-    eliminating_df = pd.DataFrame(columns=range(len(minterms)))
+   # remove the dont_care rows
+    minterms = minterms.loc[~minterms['is_a_dont_care']].copy()
+    # Create an empty DataFrame with the colum names == the indexes of the minterms
+    eliminating_df = pd.DataFrame(columns=minterms.index)
     for _ in range(len(reduced_df)):
         eliminating_df.loc[len(eliminating_df)] = '' * len(minterms)
     for i in range(len(reduced_df)):
@@ -189,5 +199,6 @@ while terms_got_minimized == True:
 print("\nSelecting terms: \n")
 eliminating_df = eliminating_table(minterms, reduced_df)
 print(eliminating_df)
+print("\n")
 selected_terms = reduce_eliminating_table(eliminating_df)
 print_minterms(selected_terms, reduced_df)
