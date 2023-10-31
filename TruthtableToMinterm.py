@@ -3,21 +3,17 @@ import math
 from itertools import combinations
 
 
-input_file = input(
-    "Enter the filename of the Excel file with the truth table. (e.g. table.xlsx): ")
-
-df = pd.read_excel(input_file)
-number_of_rows = len(df)
-number_of_inputs = int(math.log2(number_of_rows))
-
-
-def truth_table_to_minterms(df):
-    # Add an empty column 'is_a_dont_care'
+def truth_table_to_minterms(df, is_a_dnf):
+    if is_a_dnf:
+        remove_from_rows = 0
+    else:
+        remove_from_rows = 1
+     # Add an empty column 'is_a_dont_care'
     df['is_a_dont_care'] = False
     # Remove rows with 0 in the specified column (take 0 and dont cares)
-    df = df[df[df.columns[number_of_inputs]] != 0].copy()
+    df = df[df[df.columns[number_of_inputs]] != remove_from_rows].copy()
     for row in range(len(df)):
-        if df.iloc[row, number_of_inputs] != 1:
+        if df.iloc[row, number_of_inputs] != 1 and df.iloc[row, number_of_inputs] != 0:
             df.iloc[row, number_of_inputs + 1] = True
     # Count the number of 1s in each row in the anz_inputs columns
     row_sums = df.iloc[:, : number_of_inputs].sum(axis=1)
@@ -170,29 +166,62 @@ def reduce_eliminating_table(df):
     return selected_rows
 
 
-def print_minterms(selected_terms, reduced_df):
-    dmf_string = ""
-    dmf_string += "DMF = "
+def print_minterms(selected_terms, reduced_df, is_a_dnf):
+    if is_a_dnf:
+        logic1 = "and"
+        logic2 = "or"
+        truth_value = 1
+        inverted_truth_value = 0
+        min_string = "DMF = "
+    else:
+        logic1 = "or"
+        logic2 = "and"
+        truth_value = 0
+        inverted_truth_value = 1
+        min_string = "KMF = "
+
     for row in selected_terms:
-        dmf_string += "( "
+        min_string += "( "
         for col in range(number_of_inputs):
-            if reduced_df.iloc[row, col] == 0:
-                dmf_string += f"not {reduced_df.columns[col]} and "
-            elif reduced_df.iloc[row, col] == 1:
-                dmf_string += f"{reduced_df.columns[col]} and "
+            if reduced_df.iloc[row, col] == truth_value:
+                min_string += f"{reduced_df.columns[col]} {logic1} "
+            elif reduced_df.iloc[row, col] == inverted_truth_value:
+                min_string += f"not {reduced_df.columns[col]} {logic1} "
         # removes the last "and "
-        dmf_string = dmf_string[:-4]
-        dmf_string += ") or "
+        min_string = min_string[:-4]
+        min_string += f") {logic2} "
     # removes the last " or "
-    dmf_string = dmf_string[:-4]
-    dmf_string += "\n\n"
-    print(dmf_string)
+    min_string = min_string[:-4]
+    min_string += "\n\n"
+    print(min_string)
+
+
+input_file = input(
+    "Enter the filename of the Excel file with the truth table. (e.g. table.xlsx): ")
+while True:
+    y_n = input(
+        f"Should the result be a disjunctive minimal form (DMF)? (y/n): ")
+    if y_n == 'y':
+        print("Performing Quine-McCluskey algorithm with DNF...\n")
+        is_a_dnf = True
+        break
+    if y_n == 'n':
+        print("Performing Quine-McCluskey algorithm with KNF...\n")
+        is_a_dnf = False
+        break
+
+df = pd.read_excel(input_file)
+number_of_rows = len(df)
+number_of_inputs = int(math.log2(number_of_rows))
 
 
 print("\nThe Truthtable form the exel-file\n")
 print(df)
-minterms = truth_table_to_minterms(df)
-print("\nMinterms sorted by the numbers of '1'\n")
+if is_a_dnf:
+    print("\nMinterms sorted by the numbers of '1'\n")
+else:
+    print("\nMinterms sorted by the numbers of '0'\n")
+minterms = truth_table_to_minterms(df, is_a_dnf)
 print(minterms)
 print("\nReducing the terms: \n")
 reduced_df = minterms
@@ -208,4 +237,4 @@ eliminating_df = eliminating_table(minterms, reduced_df)
 print(eliminating_df)
 print("\n")
 selected_terms = reduce_eliminating_table(eliminating_df)
-print_minterms(selected_terms, reduced_df)
+print_minterms(selected_terms, reduced_df, is_a_dnf)
