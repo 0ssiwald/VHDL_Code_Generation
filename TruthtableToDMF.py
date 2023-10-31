@@ -34,7 +34,7 @@ def check_for_doubled_terms(result, merged_term):
     for j in range(len(result)):
         diff_count = 0
         for col in range(number_of_inputs):
-            if merged_term.iloc[col] != result.iloc[j, col]:
+            if merged_term[df.columns[col]] != result[j][df.columns[col]]:
                 diff_count += 1
         if diff_count == 0:
             return True
@@ -43,60 +43,67 @@ def check_for_doubled_terms(result, merged_term):
 
 def compare_terms_in_adjacent_groups(df):
     terms_got_minimized = False
-    # Remove the is_a_dont care column
+
+    # Remove the is_a_dont_care column
     if 'is_a_dont_care' in df.columns:
         df = df.drop(columns='is_a_dont_care')
+    # Add an empty column 'is_a_dont_care'
+    if 'included_terms' not in df.columns:
+        df['included_terms'] = ''
     # Reset the indexes of the dataframe
     df = df.reset_index(drop=True)
+
     # New dataframe for results
-    result = pd.DataFrame(columns=df.columns)
+    result_data = []
+
     for i in range(len(df)):
-        # To add rows that cant be further minimized to the new dataframe
         term_can_be_minimized = False
-        # if this is a term with one of the biggest value of number_of_ones
+
         if df.at[i, 'number_of_ones'] == df.at[len(df) - 1, 'number_of_ones']:
-            # checks the terms backwards for terms that can be reduced to stop them from being copied to results
+            # Check for terms that can be reduced
             for j in range(i, 0, -1):
                 if abs(df.at[i, 'number_of_ones'] - df.at[j, 'number_of_ones']) == 1:
-                    # Look if there is only one diffrence between rows
                     diff_count = 0
-                    for col in range(number_of_inputs):
-                        if df.iloc[i, col] != df.iloc[j, col]:
-                            diff_count += 1
-                    if diff_count == 1:
-                        term_can_be_minimized = True
-        else:
-            for j in range(i + 1, len(df)):
-                diff_count = 0
-                block_flag = False
-                # Compare adjesent rows if there is only 1 diffrence in the number of ones
-                if abs(df.at[i, 'number_of_ones'] - df.at[j, 'number_of_ones']) == 1:
-                    # Look if there is only one diffrence between rows
+                    block_flag = False
+
                     for col in range(number_of_inputs):
                         if df.iloc[i, col] != df.iloc[j, col]:
                             diff_count += 1
                             if df.iloc[i, col] == '-' or df.iloc[j, col] == '-':
                                 block_flag = True
-                    if diff_count == 1 and block_flag == False:
+
+                    if diff_count == 1 and not block_flag:
                         term_can_be_minimized = True
-                        # Add row to new result dataframe
+        else:
+            for j in range(i + 1, len(df)):
+                diff_count = 0
+                block_flag = False
+
+                if abs(df.at[i, 'number_of_ones'] - df.at[j, 'number_of_ones']) == 1:
+                    for col in range(number_of_inputs):
+                        if df.iloc[i, col] != df.iloc[j, col]:
+                            diff_count += 1
+                            if df.iloc[i, col] == '-' or df.iloc[j, col] == '-':
+                                block_flag = True
+
+                    if diff_count == 1 and not block_flag:
+                        term_can_be_minimized = True
                         merged_term = df.loc[i].copy()
-                        if 'included_terms' in df.columns:
-                            merged_term['included_terms'] = merged_term['included_terms'] + \
-                                f", {i}, {j}"
-                        else:
-                            merged_term['included_terms'] = f"{i}, {j}"
+                        merged_term['included_terms'] = f"{i} {j} " + \
+                            merged_term['included_terms']
                         for col in range(number_of_inputs):
                             if df.iloc[i, col] != df.iloc[j, col]:
                                 merged_term[df.columns[col]] = '-'
-                        if not check_for_doubled_terms(result, merged_term):
+
+                        if not check_for_doubled_terms(result_data, merged_term):
                             terms_got_minimized = True
-                            result = result.append(
-                                merged_term, ignore_index=True)
-        # If the term is completly minimized it gets still copied to the new dataframe
-        if term_can_be_minimized == False:
-            result = result.append(df.loc[i].copy())
-    result = result.reset_index(drop=True)
+                            result_data.append(pd.Series(merged_term))
+
+        if not term_can_be_minimized:
+            # Convert row to dictionary
+            result_data.append(pd.Series(df.loc[i]))
+
+    result = pd.DataFrame(result_data, columns=df.columns)
     return result, terms_got_minimized
 
 
