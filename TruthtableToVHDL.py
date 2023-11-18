@@ -35,35 +35,50 @@ ENTITY {name_entity} IS
 END {name_entity};
 
 ARCHITECTURE {name_architecture} OF {name_entity} IS
-    BEGIN
-        PROCESS ({input_names})
-            VARIABLE var_input_vec : std_logic_vector({number_of_inputs - 1} DOWNTO 0);
-            BEGIN
-            var_input_vec := """
+    SIGNAL var_input_vec : std_logic_vector({number_of_inputs - 1} DOWNTO 0);\n"""
+if number_of_outputs > 1:
+    vhdl_code += f"\tSIGNAL var_output_vec : std_logic_vector({number_of_outputs - 1} DOWNTO 0);\n"
+vhdl_code += f"""\tBEGIN
+    var_input_vec <= """
 for i in range(number_of_inputs):
     vhdl_code += f"{df.columns[i]}"
     if i < number_of_inputs - 1:
         vhdl_code += " & "
     else:
         vhdl_code += ";\n"
+vhdl_code += f"""\tPROCESS (var_input_vec)
+        BEGIN\n"""
+
 vhdl_code += f"\t\t\tCASE var_input_vec IS\n"
 for i in range(len(df)):
     vhdl_code += f'\t\t\t\tWHEN "'
     for j in range(number_of_inputs):
         vhdl_code += str(df.iloc[i, j])
-
     vhdl_code += '" => '
+
     # all in one row if only one output
-    if number_of_outputs > 1:
-        vhdl_code += f'\n'
+    if number_of_outputs == 1:
+        vhdl_code += f"{df.columns[number_of_inputs]} <= '{df.iloc[i, number_of_inputs]}';\n"
+    else:
+        vhdl_code += 'var_output_vec <= "'
+        for k in range(number_of_outputs):
+            vhdl_code += str(df.iloc[i, k + number_of_inputs]) 
+        vhdl_code += f'";\n'
+
+if number_of_outputs == 1:
+    vhdl_code += f"""\t\t\t\tWHEN OTHERS => {df.columns[number_of_inputs]} <= 'U';\n"""
+else:
+    vhdl_code += f'''\t\t\t\tWHEN OTHERS => var_output_vec <= "'''
     for k in range(number_of_outputs):
-        if number_of_outputs > 1:
-            vhdl_code += f"\t\t\t\t\t"
-        vhdl_code += f"{df.columns[number_of_inputs + k]} <= '{df.iloc[i, number_of_inputs + k]}';\n"
-vhdl_code += f"""\t\t\t\tWHEN OTHERS => {df.columns[number_of_inputs]} <= 'U';
-            END CASE;
-        END PROCESS;
-END {name_architecture};"""
+        vhdl_code += "U"
+    vhdl_code += f'";\n'
+vhdl_code += f"""\t\t\tEND CASE;
+    END PROCESS;\n"""
+
+if number_of_outputs > 1:
+    vhdl_code += f"\t({output_names}) <= var_output_vec;\n"
+
+vhdl_code += f"END {name_architecture};"
 
 with open(vhdl_filename, "w") as vhdl_file:
     vhdl_file.write(vhdl_code)

@@ -1,0 +1,34 @@
+library ieee;
+use ieee.std_logic_1164.all;
+
+ENTITY arch IS
+	PORT (x, y, z, v: IN std_logic;
+            f: OUT std_logic);
+END arch;
+
+ARCHITECTURE ef OF arch IS
+    SIGNAL var_input_vec : std_logic_vector(3 DOWNTO 0);
+	BEGIN
+    var_input_vec <= x & y & z & v;
+	PROCESS (var_input_vec)
+        BEGIN
+			CASE var_input_vec IS
+				WHEN "0000" => f <= '0';
+				WHEN "0001" => f <= '1';
+				WHEN "0010" => f <= '1';
+				WHEN "0011" => f <= '1';
+				WHEN "0100" => f <= '0';
+				WHEN "0101" => f <= '1';
+				WHEN "0110" => f <= '1';
+				WHEN "0111" => f <= '1';
+				WHEN "1000" => f <= '0';
+				WHEN "1001" => f <= '0';
+				WHEN "1010" => f <= '0';
+				WHEN "1011" => f <= '0';
+				WHEN "1100" => f <= '1';
+				WHEN "1101" => f <= '1';
+				WHEN "1110" => f <= '1';
+				WHEN "1111" => f <= '1';
+				WHEN OTHERS => f <= 'U';			END CASE;
+    END PROCESS;
+END ef;
